@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes"> 
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Story Starter</title>
+    
+    <link rel="icon" type="image/png" href="https://img.icons8.com/color/96/books.png">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/180/books.png">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        /* --- GENERAL STYLES & WALLPAPER --- */
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            height: 100vh; 
+            display: flex;
+            flex-direction: row;
+            background-color: #1a3c2a;
+            /* Punctuation Pattern */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill='%232a5c4a' opacity='0.5'%3E%3Ctext x='10' y='20' font-family='Georgia, serif' font-size='20'%3E?%3C/text%3E%3Ctext x='60' y='30' font-family='Georgia, serif' font-size='24'%3E!%3C/text%3E%3Ctext x='30' y='60' font-family='Georgia, serif' font-size='22'%3E;%3C/text%3E%3Ctext x='80' y='70' font-family='Georgia, serif' font-size='20'%3E.%3C/text%3E%3Ctext x='40' y='90' font-family='Georgia, serif' font-size='18'%3E,%3C/text%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        /* --- LEFT SIDEBAR (SCENE REFERENCE) --- */
+        .sidebar {
+            width: 350px;
+            flex-shrink: 0;
+            background-color: rgba(249, 249, 249, 0.92);
+            border-right: 2px solid rgba(0,0,0,0.1);
+            padding: 20px;
+            overflow-y: auto;
+            order: 0; 
+        }
+        .sidebar h2 { color: #1a3c2a; margin-top: 0; border-bottom: 2px solid #0056b3; padding-bottom: 10px;}
+        .instructions { color: #555; font-style: italic; margin-bottom: 20px;}
+        .scene-card { background: #fff; border-left: 5px solid #0056b3; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .scene-title { font-weight: bold; font-size: 15px; color: #0056b3; margin-bottom: 5px; }
+        .scene-text { font-size: 13px; color: #444; line-height: 1.4;}
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            background-color: transparent; 
+            overflow: hidden;
+            position: relative;
+            order: 1;
+        }
+
+        /* --- WHEEL CONTAINER --- */
+        .wheel-container {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-right: 1px solid #eee;
+            position: relative; 
+            padding-top: 50px;
+        }
+
+        /* --- RIGHT PANEL --- */
+        #right-panel {
+            width: 50%;
+            padding: 20px 30px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; 
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+
+        /* Output Box */
+        .output-box {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+        .output-box h3 { 
+            color: #d9534f;
+            margin-top: 0;
+            font-size: 1.4em;
+            border-bottom: 2px solid #d9534f;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .output-box strong { color: #0056b3; display: block; margin-bottom: 8px; font-size: 1.1em;}
+        .output-suggestion { font-size: 14px; line-height: 1.6; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #eee; }
+
+        /* Writing Editor */
+        .editor-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 300px;
+        }
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .editor-title { font-weight: bold; color: #333; }
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            border: 1px solid #eee;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            background-color: #fafafa;
+        }
+        textarea:focus { background-color: #fff; border-color: #0056b3; }
+
+        .save-btn-group { display: flex; gap: 5px; }
+        .btn-save { padding: 5px 10px; font-size: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-save:hover { background-color: #218838; }
+        .btn-save.blue { background-color: #0056b3; }
+        .btn-save.blue:hover { background-color: #004494; }
+        .btn-save.red { background-color: #d9534f; }
+        .btn-save.red:hover { background-color: #c9302c; }
+
+        /* --- RINGS --- */
+        .ring {
+            position: absolute; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        
+        /* DESKTOP SIZES */
+        #outer-ring { width: 480px; height: 480px; background-color: #0056b3; z-index: 1; }
+        #inner-ring { width: 320px; height: 320px; background-color: #d9534f; z-index: 2; }
+
+        .ring-spoke { 
+            position: absolute; height: 50%; top: 0; left: 50%; width: 0; 
+            transform-origin: bottom center; pointer-events: none; 
+        }
+        .text-label { 
+            position: absolute; 
+            top: 15px; 
+            left: -90px; 
+            width: 180px; 
+            text-align: center; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 11px; 
+            text-transform: uppercase; 
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
+            line-height: 1.2;
+        }
+        
+        .arrow { 
+            position: absolute; 
+            top: -25px; 
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10; 
+            border-left: 20px solid transparent; 
+            border-right: 20px solid transparent; 
+            border-top: 30px solid #333; 
+        }
+
+        /* CONTROLS */
+        .controls-area { margin-top: 520px; display: flex; gap: 20px; z-index: 20; position: relative; }
+        .control-group { text-align: center; background: #f0f0f0; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+        .wheel-btn { padding: 8px 15px; font-size: 16px; cursor: pointer; background-color: #fff; border: 1px solid #999; border-radius: 4px; }
+        .wheel-btn:hover { background-color: #e2e6ea; }
+        .lbl { font-size: 12px; font-weight: bold; margin-bottom: 5px; display: block; color: #333; text-transform: uppercase;}
+        .lbl.blue { color: #0056b3; }
+        .lbl.red { color: #d9534f; }
+
+        /* =========================================
+           MOBILE / TABLET RESPONSIVE OVERRIDES 
+           ========================================= */
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column; /* Stack top to bottom */
+                height: auto; 
+                overflow-y: auto; /* Enable page scrolling */
+            }
+
+            .main-content {
+                flex-direction: column;
+                overflow: visible;
+                height: auto;
+                order: 1; /* Main content first (top) */
+            }
+
+            /* MOVE SIDEBAR TO BOTTOM ON MOBILE */
+            .sidebar {
+                display: block; /* Make it visible again */
+                width: 100%;
+                height: auto;
+                order: 2; /* Sidebar second (bottom) */
+                border-right: none;
+                border-top: 2px solid #ddd; /* Separator line */
+            }
+
+            .wheel-container {
+                width: 100%;
+                min-height: 450px; 
+                padding-top: 50px;
+                padding-bottom: 20px;
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+
+            #right-panel {
+                width: 100%;
+                height: auto; 
+                overflow: visible;
+            }
+            
+            /* RESIZE RINGS FOR MOBILE */
+            #outer-ring { width: 310px; height: 310px; }
+            #inner-ring { width: 210px; height: 210px; }
+            
+            /* ADJUST CONTROLS POSITION FOR SMALLER RINGS */
+            .controls-area { margin-top: 350px; gap: 10px; }
+            
+            /* ADJUST TEXT LABELS FOR SMALLER RINGS */
+            .text-label {
+                font-size: 9px;
+                width: 120px;
+                left: -60px;
+                top: 10px;
+            }
+            
+            .btn-save { padding: 8px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Scene Reference</h2>
+        <p class="instructions">Use the buttons to align a scene title with a planning focus.</p>
+        <div id="sidebar-scenes-container"></div>
+    </div>
+
+    <div class="main-content">
+        <div class="wheel-container">
+            <div class="arrow"></div>
+            <div id="outer-ring" class="ring"></div>
+            <div id="inner-ring" class="ring"></div>
+            
+            <div class="controls-area">
+                <div class="control-group">
+                    <span class="lbl blue">Scene-Shift</span>
+                    <button class="wheel-btn" onclick="rotateRing('outer-ring', -45)">◀</button>
+                    <button class="wheel-btn" onclick="rotateRing('outer-ring', 45)">▶</button>
+                </div>
+                <div class="control-group">
+                    <span class="lbl red">Focus</span>
+                    <button class="wheel-btn" onclick="rotateRing('inner-ring', -60)">◀</button>
+                    <button class="wheel-btn" onclick="rotateRing('inner-ring', 60)">▶</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="right-panel">
+            <div class="output-box">
+                <h3 id="result-title">Welcome</h3>
+                <div id="result-desc">
+                    <p>Use the buttons to spin the wheels and generate a prompt.</p>
+                </div>
+            </div>
+
+            <div class="editor-container">
+                <div class="editor-header">
+                    <span class="editor-title">Writing Window</span>
+                    <div class="save-btn-group">
+                        <button class="btn-save" onclick="saveText()">Save .TXT</button>
+                        <button class="btn-save blue" onclick="saveWord()">Save .DOC</button>
+                        <button class="btn-save red" onclick="savePDF()">Save .PDF</button>
+                    </div>
+                </div>
+                <textarea id="story-editor" placeholder="Write your story idea here..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // --- DATA ---
+            var scenesData = [
+                { id: 0, title: "Thriller: The Ledge", synopsis: "A narrow ledge... Someone moves gingerly, back against the wall, eyes trying not to look down..." },
+                { id: 1, title: "Western: Saloon", synopsis: "A western saloon. Piano tinkling. Cowhands drinking. A stranger appears at the swing door..." },
+                { id: 2, title: "Horror: Bedroom Visitor", synopsis: "A bedroom at night, full moon. A young person sleeping. A figure appears beside the bed, leans over..." },
+                { id: 3, title: "Sports: The Final Kick", synopsis: "A penalty shootout. Final kick. The player places the ball. Looks at the keeper. Begins run..." },
+                { id: 4, title: "Mystery: Manor Break-in", synopsis: "Night. An old country house. A figure climbs ivy to a balcony. Flash of a blade, window prised open..." },
+                { id: 5, title: "Crime: Airport Handoff", synopsis: "Airport lockers. A person approaches furtively, opens a locker, removes a briefcase. From behind, a gun pressed into ribs..." },
+                { id: 6, title: "Action: The Wire Fence", synopsis: "Night. A figure crawls to a barbed wire fence. Whistles softly. Joined by a second figure. They begin to cut the wire." },
+                { id: 7, title: "Drama: Schoolyard Hide", synopsis: "School yard at night. Caretaker doing rounds. Shadowy figures dodge and hide. They approach a window..." }
+            ];
+
+            var planningCategories = [
+                { label: "WHO?", full: "Character Archetype" },
+                { label: "WHY?", full: "Motivation / Goal" },
+                { label: "WHAT NEXT?", full: "Immediate Action" },
+                { label: "SIGHT / SOUND", full: "Sensory Clues" },
+                { label: "TOUCH / FEEL", full: "Physical State" },
+                { label: "EMOTION", full: "Internal Conflict" }
+            ];
+
+            // --- FUNCTIONS ---
+            function populateSidebar() {
+                const container = document.getElementById('sidebar-scenes-container');
+                scenesData.forEach(scene => {
+                    const card = document.createElement('div');
+                    card.className = 'scene-card';
+                    card.innerHTML = `
+                        <div class="scene-title">${scene.title}</div>
+                        <div class="scene-text">${scene.synopsis}</div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            function setupRings() {
+                var rings = [{ id: 'outer-ring', data: scenesData, step: 45, textProp: 'title' }, { id: 'inner-ring', data: planningCategories, step: 60, textProp: 'label' }];
+                
+                rings.forEach(function(ringData) {
+                    var ring = document.getElementById(ringData.id);
+                    if(!ring) return; 
+                    var count = ringData.data.length;
+                    var angleStep = ringData.step;
+
+                    for (var i = 0; i < count; i++) {
+                        var spoke = document.createElement('div');
+                        spoke.className = 'ring-spoke';
+                        var rotation = i * angleStep;
+                        spoke.style.transform = 'rotate(' + rotation + 'deg)';
+
+                        var label = document.createElement('div');
+                        label.className = 'text-label';
+                        label.innerText = ringData.data[i][ringData.textProp];
+                        
+                        spoke.appendChild(label);
+                        ring.appendChild(spoke);
+                    }
+                });
+            }
+            
+            populateSidebar();
+            setupRings();
+            updateCenter();
+        });
+
+        // --- GLOBAL VARIABLES & FUNCTIONS ---
+        var rotations = { 'outer-ring': 0, 'inner-ring': 0 };
+        
+        function rotateRing(id, deg) {
+            rotations[id] += deg;
+            var ring = document.getElementById(id);
+            if(ring) ring.style.transform = 'rotate(' + rotations[id] + 'deg)';
+            updateCenter();
+        }
+
+        function getIndex(rotation, total) {
+            var step = 360 / total;
+            var angle = rotation % 360;
+            if (angle < 0) angle += 360;
+            return Math.round(((360 - angle) % 360) / step);
+        }
+
+        function updateCenter() {
+            var suggestionMatrix = {
+                0: [ 
+                    ["Character Archetype", "A disgraced spy on the run.", "An innocent person framed for murder.", "A master thief on their final job."],
+                    ["Motivation / Goal", "To escape the police waiting below.", "To reach an open window on the next balcony.", "To hide from the spotlight sweeping the wall."],
+                    ["Immediate Action", "Their foot slips on wet masonry.", "They press flat against the brickwork as a window opens.", "They risk a jump to the fire escape."],
+                    ["Sensory Clues", "The dizzying pull of the streetlights below.", "The smell of rain and exhaust fumes.", "The wail of a distant siren closing in."],
+                    ["Physical State", "Fingers cramping from the cold.", "Legs shaking uncontrollably.", "Heart beating so loud it masks the city noise."],
+                    ["Internal Conflict", "The urge to just let go versus the will to survive.", "Regret over the decision that led them here."]
+                ],
+                1: [ 
+                    ["Character Archetype", "A weary Sheriff with a dark past.", "A Bounty Hunter tracking a target.", "A cheating Card Shark caught in the act."],
+                    ["Motivation / Goal", "To arrest a fugitive without a shootout.", "To cheat the house and leave with the gold.", "To find the man who killed their brother."],
+                    ["Immediate Action", "The piano stops abruptly.", "Hands hover over holsters.", "The stranger tips their hat and blocks the exit."],
+                    ["Sensory Clues", "The smell of stale beer and sawdust.", "The creak of the swing doors.", "The metallic taste of fear and tobacco."],
+                    ["Physical State", "Sweat trickling down a dusty temple.", "A finger twitching near the trigger.", "Dry throat and squinting eyes."],
+                    ["Internal Conflict", "Pride vs. Survival.", "The temptation to draw first vs. the law."]
+                ],
+                2: [ 
+                    ["Character Archetype", "A defenseless child.", "A skeptical babysitter.", "A parent who thought they were alone."],
+                    ["Motivation / Goal", "To stay perfectly still.", "To wake up from the nightmare.", "To reach the phone without making a sound."],
+                    ["Immediate Action", "The figure leans closer and whispers.", "The floorboard creaks under a heavy foot.", "The moonlight is suddenly blocked out."],
+                    ["Sensory Clues", "The smell of rot or damp earth.", "The sound of heavy, rasping breathing.", "The unnatural chill in the air."],
+                    ["Physical State", "Paralysis (Sleep Paralysis).", "Cold sweat soaking the sheets.", "Holding breath until lungs burn."],
+                    ["Internal Conflict", "Rational mind vs. Primal fear.", "The urge to scream vs. the knowledge it might provoke an attack."]
+                ],
+                3: [ 
+                    ["Character Archetype", "The Rookie with everything to prove.", "The Veteran playing their last game.", "The Team Captain carrying the nation's hope."],
+                    ["Motivation / Goal", "To silence the critics.", "To win the World Cup.", "To redeem a past failure."],
+                    ["Immediate Action", "They kiss the ball and place it on the spot.", "They take a long run-up.", "They look the goalkeeper in the eye."],
+                    ["Sensory Clues", "The deafening roar of the crowd turns to silence.", "The smell of fresh grass and deep heat rub.", "The bright glare of the stadium lights."],
+                    ["Physical State", "Legs feel like lead.", "Tunnel vision focusing only on the ball.", "Heart rate spiking."],
+                    ["Internal Conflict", "Confidence vs. Imposter Syndrome.", "Focusing on the technique vs. the consequence of missing."]
+                ],
+                4: [ 
+                    ["Character Archetype", "A Private Detective investigating a murder.", "A jealous lover seeking evidence.", "An heir trying to steal the will."],
+                    ["Motivation / Goal", "To find the murder weapon.", "To catch the spouse in the act.", "To recover the stolen diamond."],
+                    ["Immediate Action", "They use a knife to prise the latch.", "A dog barks inside the house.", "A light flicks on in the room."],
+                    ["Sensory Clues", "The scent of night-blooming jasmine.", "The cold iron of the railing.", "The crunch of gravel below."],
+                    ["Physical State", "Adrenaline sharpening the senses.", "Shivering in the night air.", "Suppressed sneeze."],
+                    ["Internal Conflict", "Curiosity vs. Caution.", "Greed vs. Morality."]
+                ],
+                5: [ 
+                    ["Character Archetype", "A nervous mule carrying contraband.", "An undercover cop closing the trap.", "A blackmailed businessman."],
+                    ["Motivation / Goal", "To make the drop and get out.", "To secure the evidence.", "To pay the ransom."],
+                    ["Immediate Action", "The locker jams.", "A security guard walks by.", "They realize the locker is empty."],
+                    ["Sensory Clues", "The sterile smell of floor polish.", "The robotic announcement on the PA system.", "The click of the combination lock."],
+                    ["Physical State", "Looking shifty and sweating.", "Hands shaking as they hold the key.", "Stomach churning."],
+                    ["Internal Conflict", "Trusting the partner vs. Paranoia.", "The desire to run vs. the need for the money."]
+                ],
+                6: [ 
+                    ["Character Archetype", "A Special Forces commando.", "A prisoner of war escaping.", "A saboteur."],
+                    ["Motivation / Goal", "To infiltrate the enemy base.", "To escape to neutral territory.", "To cut the power lines."],
+                    ["Immediate Action", "The cutters make a loud 'snip'.", "A searchlight sweeps over them.", "A guard dog growls nearby."],
+                    ["Sensory Clues", "The smell of wet mud and rust.", "The sharp scratch of barbs.", "The sound of rain hitting helmets."],
+                    ["Physical State", "Mud-caked and freezing.", "Muscle fatigue from crawling.", "Controlled breathing."],
+                    ["Internal Conflict", "Duty vs. Self-preservation.", "Leaving a fallen comrade vs. saving the mission."]
+                ],
+                7: [ 
+                    ["Character Archetype", "A rebellious teenager.", "A student retrieving a confiscated phone.", "A runaway hiding for the night."],
+                    ["Motivation / Goal", "To impress a crush.", "To steal the exam papers.", "To find shelter."],
+                    ["Immediate Action", "The caretaker's torch beam swings near.", "They drop a spray paint can.", "A window smashes loudly."],
+                    ["Sensory Clues", "The smell of asphalt and old gym shoes.", "The distant hum of traffic.", "The texture of the brick wall."],
+                    ["Physical State", "Giggling nervously.", "Adrenaline rush of being naughty.", "Cold and huddled."],
+                    ["Internal Conflict", "Peer pressure vs. Fear of getting caught.", "Anger at authority vs. Guilt."]
+                ]
+            };
+
+            var sceneIndex = getIndex(rotations['outer-ring'], 8); 
+            var categoryIndex = getIndex(rotations['inner-ring'], 6); 
+            
+            var currentSceneSuggestions = suggestionMatrix[sceneIndex];
+            if (!currentSceneSuggestions) return;
+            var currentCategoryData = currentSceneSuggestions[categoryIndex];
+            var categoryLabels = ["WHO?", "WHY?", "WHAT NEXT?", "SIGHT / SOUND", "TOUCH / FEEL", "EMOTION"];
+
+            var mainTitle = currentCategoryData[0];
+            var descHtml = "";
+            for (var i = 1; i < currentCategoryData.length; i++) {
+                descHtml += '<div class="output-suggestion">' + currentCategoryData[i] + '</div>';
+            }
+            
+            var titleEl = document.getElementById('result-title');
+            var descEl = document.getElementById('result-desc');
+            
+            if(titleEl) titleEl.innerText = categoryLabels[categoryIndex];
+            if(descEl) descEl.innerHTML = '<strong>' + mainTitle + '</strong>' + descHtml;
+        }
+
+        // --- SAVE FUNCTIONS ---
+        function getContent() {
+            var text = document.getElementById('story-editor').value;
+            if(!text) { alert("Please write something first."); return null; }
+            return text;
+        }
+        function saveText() {
+            var text = getContent();
+            if(!text) return;
+            var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+            var a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "story.txt";
+            a.click();
+        }
+        function saveWord() {
+            var text = getContent();
+            if(!text) return;
+            var html = '<html><body>' + text.replace(/\n/g, "<br>") + '</body></html>';
+            var blob = new Blob([html], { type: "application/msword" });
+            var a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "story.doc";
+            a.click();
+        }
+        function savePDF() {
+            var text = getContent();
+            if(!text) return;
+            
+            if (!window.jspdf) {
+                alert("PDF Library not loaded. Check your internet connection or save as .TXT instead.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            var splitText = doc.splitTextToSize(text, 180);
+            doc.text(splitText, 10, 10);
+            doc.save("story.pdf");
+        }
+    </script>
+</body>
+</html>
